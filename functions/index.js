@@ -1,41 +1,38 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
-
-// const {onRequest} = require("firebase-functions/v2/https");
 const {onCall} = require("firebase-functions/v2/https");
-const { google } = require('googleapis');
-
 const logger = require("firebase-functions/logger");
+const admin = require("firebase-admin");
+const functions = require("firebase-functions");
 
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
-exports.helloWorld = onCall({cors: true}, (request) => {
+// Firebase Admin SDK를 초기화합니다.
+admin.initializeApp();
+
+// Callable function으로 ID 토큰을 검증하고 UID를 반환합니다.
+exports["verifyusertoken"] = onCall({cors: true}, async (data, context) => {
+
+  // context 전체를 로깅하여 확인
+  logger.info("Received context:", context);
+
+  // 인증된 사용자가 있는지 확인합니다.
+  if (!context || !context.auth) {
+    // 인증되지 않은 요청은 처리하지 않습니다.
+    logger.error("No authentication found for incoming request");
+    throw new functions.https.HttpsError("unauthenticated", context);
+  }
+
+  try {
+    const uid = context.auth.uid;
+    return {uid: uid};
+  } catch (error) {
+    // 검증 과정에서 에러가 발생하면, 에러 메시지를 보냅니다.
+    logger.error("Error verifying user token:", error);
+    throw new functions.https.HttpsError("internal", "Not viable token", error.message);
+  }
+});
+
+// 기본 예제 함수
+exports.helloworld = onCall({cors: true}, (request) => {
   logger.info("Hello logs!", {structuredData: true});
   return {
-    message: "Hello World from Firebase Functions!",
+    message: "Hello World from LOCAL Firebase Functions!",
   };
 });
-
-
-
-exports.getYoutubeInfo = onCall(async (data, context) => {
-  const accessToken = data.accessToken;
-  // const apiKey = functions.config().youtube.apikey;
-
-  // YouTube Data API 사용
-  const youtube = google.youtube({ version: 'v3', auth: apiKey });
-  const response = await youtube.channels.list({
-    part: 'snippet,contentDetails,statistics',
-    mine: true,
-    access_token: accessToken
-  });
-  return response.data;
-});
-
-
