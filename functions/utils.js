@@ -63,32 +63,6 @@ async function fetchSubscribedChannels(accessToken) {
   return responseData;
 }
 
-async function createPlaylist(accessToken, title, description) {
-  const response = await fetch('https://www.googleapis.com/youtube/v3/playlists?part=snippet%2Cstatus', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      snippet: {
-        title: title,
-        description: description
-      },
-      status: {
-        privacyStatus: 'private'
-      }
-    })
-  });
-
-  const responseData = await response.json();
-  if (!response.ok) {
-    throw new Error(responseData.error.message);
-  }
-
-  return responseData;
-}
 
 module.exports = {
   getUserTokens,
@@ -96,5 +70,4 @@ module.exports = {
   refreshAccessToken,
   fetchYouTubeData,
   fetchSubscribedChannels,
-  createPlaylist
 };

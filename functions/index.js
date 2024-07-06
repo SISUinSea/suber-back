@@ -8,4 +8,4 @@ exports.verifyusertoken = require('./verifyUserToken');
 exports.helloworld = require('./helloWorld');
 exports.getYouTubeData = require('./getYoutubeData');
 exports.getSubscribedChannels = require('./getSubscribedChannels');
-// exports.createYouTubePlaylist = require('./createYoutubePlaylist');
+exports.createYoutubePlaylist = require('./createYoutubePlaylist');

@@ -3,8 +3,7 @@ const admin = require("firebase-admin");
 const { google } = require('googleapis');
 const { getUserTokens, refreshAccessToken, storeUserTokens } = require('./utils');
 
-
-exports.createYoutubePlaylist = functions.https.onCall(async (data, context) => {
+module.exports = functions.https.onCall(async (data, context) => {
   const idToken = data.idToken;
   const playlistTitle = data.playlistTitle;
 
@@ -24,13 +23,10 @@ exports.createYoutubePlaylist = functions.https.onCall(async (data, context) => 
       await storeUserTokens(uid, accessToken, userData.refreshToken);
     }
 
-    const oauth2Client = new google.auth.OAuth2();
-    oauth2Client.setCredentials({ access_token: accessToken });
-    const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
-
+    const youtube = google.youtube('v3');
     const response = await youtube.playlists.insert({
       part: 'snippet,status',
-      requestBody: {
+      resource: {
         snippet: {
           title: playlistTitle,
           description: 'A new playlist created via Firebase Functions',
@@ -39,6 +35,7 @@ exports.createYoutubePlaylist = functions.https.onCall(async (data, context) => 
           privacyStatus: 'private',
         },
       },
+      access_token: accessToken,
     });
 
     return { data: response.data };
