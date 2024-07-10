@@ -14,7 +14,7 @@ async function storeUserTokens(uid, accessToken, refreshToken) {
   await admin.firestore().collection('users').doc(uid).set({
     accessToken: accessToken,
     refreshToken: refreshToken,
-    tokenExpiry: Date.now() + 3600 * 1000
+    tokenExpiry: Date.now() + 3600 * 990,
   }, { merge: true });
 }
 
@@ -24,12 +24,19 @@ async function refreshAccessToken(refreshToken) {
     refresh_token: refreshToken
   });
 
-  const tokens = await client.getAccessToken();
-  if (!tokens.token) {
+  try {
+    const tokens = await client.getAccessToken();
+    console.log('Tokens received:', tokens); // 로그 추가
+    if (!tokens.token) {
+      throw new Error('Failed to refresh access token');
+    }
+    return tokens.token;
+  } catch (error) {
+    console.error('Error refreshing access token:', error);
     throw new Error('Failed to refresh access token');
   }
-  return tokens.token;
 }
+
 
 async function fetchYouTubeData(accessToken) {
   const response = await fetch('https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true', {

@@ -1,6 +1,6 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const admin = require("firebase-admin");
 const { google } = require('googleapis');
+const admin = require("firebase-admin");
 const { getUserTokens, refreshAccessToken, storeUserTokens } = require('./utils');
 
 // Firebase Admin 초기화
@@ -12,11 +12,17 @@ module.exports = onCall(async (data, context) => {
   console.log('Function called with data:', data);
 
   const idToken = data.data.idToken;
+  const channelId = data.data.channelId;
   const pageToken = data.data.pageToken || "";
 
   if (!idToken) {
     console.error('ID token is missing');
     throw new HttpsError('invalid-argument', 'ID token is required');
+  }
+
+  if (!channelId) {
+    console.error('Channel ID is missing');
+    throw new HttpsError('invalid-argument', 'Channel ID is required');
   }
 
   try {
@@ -48,12 +54,14 @@ module.exports = onCall(async (data, context) => {
     oauth2Client.setCredentials({ access_token: accessToken });
     const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
 
-    console.log('Fetching subscribed channels from YouTube API...');
-    const response = await youtube.subscriptions.list({
+    console.log('Fetching channel videos from YouTube API...');
+    const response = await youtube.search.list({
       part: 'snippet',
-      mine: true,
+      channelId: channelId,
       maxResults: 10,
       pageToken: pageToken,
+      order: 'date',
+      type: 'video' // Only fetch videos
     });
 
     console.log('YouTube API response:', response.data);
