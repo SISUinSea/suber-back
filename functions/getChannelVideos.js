@@ -55,8 +55,8 @@ module.exports = onCall(async (data, context) => {
     const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
 
     console.log('Fetching channel videos from YouTube API...');
-    const response = await youtube.search.list({
-      part: 'snippet',
+    const searchResponse = await youtube.search.list({
+      part: 'id',
       channelId: channelId,
       maxResults: 10,
       pageToken: pageToken,
@@ -64,8 +64,18 @@ module.exports = onCall(async (data, context) => {
       type: 'video' // Only fetch videos
     });
 
-    console.log('YouTube API response:', response.data);
-    return { data: response.data };
+    console.log('YouTube search response:', searchResponse.data);
+
+    const videoIds = searchResponse.data.items.map(item => item.id.videoId).join(',');
+
+    console.log('Fetching video details from YouTube API...');
+    const videoResponse = await youtube.videos.list({
+      part: 'snippet,contentDetails',
+      id: videoIds
+    });
+
+    console.log('YouTube video details response:', videoResponse.data);
+    return { data: videoResponse.data };
   } catch (error) {
     console.error('Error fetching YouTube data:', error.message);
     throw new HttpsError('internal', `Error fetching YouTube data: ${error.message}`);
