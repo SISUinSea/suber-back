@@ -1,15 +1,16 @@
-const functions = require("firebase-functions");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const { google } = require('googleapis');
 const { getUserTokens, refreshAccessToken, storeUserTokens } = require('./utils');
 
-module.exports = functions.https.onCall(async (data, context) => {
-  const idToken = data.idToken;
-  const playlistTitle = data.playlistTitle;
-  const videoIds = data.videoIds; // 새로 추가: 플레이리스트에 추가할 비디오 ID 배열
+
+module.exports = onCall(async (data, context) => {
+  const idToken = data.data.idToken;
+  const playlistTitle = data.data.playlistTitle;
+  const videoIds = data.data.videoIds;
 
   if (!idToken || !playlistTitle || !videoIds || !Array.isArray(videoIds)) {
-    throw new functions.https.HttpsError('invalid-argument', 'ID token, playlist title, and video IDs array are required');
+    throw new HttpsError('invalid-argument', 'ID token, playlist title, and video IDs array are required');
   }
 
   try {
@@ -42,28 +43,52 @@ module.exports = functions.https.onCall(async (data, context) => {
 
     const playlistId = playlistResponse.data.id;
 
-    // 2. 비디오 추가
-    const addVideoPromises = videoIds.map(videoId => 
-      youtube.playlistItems.insert({
-        part: 'snippet',
-        resource: {
-          snippet: {
-            playlistId: playlistId,
-            resourceId: {
-              kind: 'youtube#video',
-              videoId: videoId,
-            },
+    // 비디오 추가
+    for (const videoId of videoIds) {
+      await retryRequest(() =>
+        youtube.playlistItems.insert({
+          part: 'snippet',
+          requestBody: {
+            snippet: {
+              playlistId: playlistId,
+              resourceId: {
+                kind: 'youtube#video',
+                videoId: videoId
+              }
+            }
           },
-        },
-        access_token: accessToken,
-      })
-    );
+          access_token: accessToken,
+        })
+      );
+    }
 
-    await Promise.all(addVideoPromises);
+    return { success: true };
+  
+    } catch (error) {
+      console.error('Error creating YouTube playlist or adding videos:', error);
+      throw new HttpsError('internal', 'Error creating YouTube playlist or adding videos');
+    }
+  });
 
-    return { data: playlistResponse.data, message: 'Playlist created and videos added successfully' };
-  } catch (error) {
-    console.error('Error creating YouTube playlist or adding videos:', error);
-    throw new functions.https.HttpsError('internal', 'Error creating YouTube playlist or adding videos', error.message);
+
+async function retryRequest(requestFunction, retries = 3, initialDelay = 1000) {
+  let lastError;
+  let delay = initialDelay;
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await requestFunction();
+    } catch (error) {
+      lastError = error;
+      if (error.response && error.response.status === 503) {
+        console.warn(`Attempt ${attempt} failed: ${error.message}. Retrying in ${delay}ms...`);
+        await new Promise(res => setTimeout(res, delay));
+        delay *= 2; // 지수 백오프
+      } else {
+        throw error;
+      }
+    }
   }
-});
+
+  throw lastError;
+}

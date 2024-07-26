@@ -26,7 +26,7 @@ async function refreshAccessToken(refreshToken) {
 
   try {
     const tokens = await client.getAccessToken();
-    console.log('Tokens received:', tokens); // 로그 추가
+    // console.log('Tokens received:', tokens); // 로그 추가
     if (!tokens.token) {
       throw new Error('Failed to refresh access token');
     }
